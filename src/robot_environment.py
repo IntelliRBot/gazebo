@@ -1,7 +1,9 @@
 import time
+import random
 import rospy
 from geometry_msgs.msg import Twist
 from std_msgs.msg import Float32
+from rosgraph_msgs.msg import Clock
 from gazebo_connection import GazeboConnection
 
 class RobotEnvironment:
@@ -12,6 +14,9 @@ class RobotEnvironment:
         
         # stablishes connection with simulator
         self.gazebo = GazeboConnection()
+
+        random.seed(42)
+
 
     def check_topic_publishers_connection(self):
         
@@ -50,8 +55,16 @@ class RobotEnvironment:
                 pitch_data = raw_pitch_data.data
             except:
                 rospy.loginfo("Current pitch_data not ready yet, retrying for getting pitch_data")
+
+        clock_data = None
+        while clock_data is None:
+            try:
+                raw_clock_data = rospy.wait_for_message('/clock', Clock, timeout=5)
+                clock_data = raw_clock_data.clock.secs + raw_clock_data.clock.nsecs / float(1000000000)
+            except:
+                rospy.loginfo("Current clock_data not ready yet, retrying for getting clock_data")
         
-        return pitch_data
+        return pitch_data, clock_data
 
     # Resets the state of the environment and returns an initial observation.
     def reset(self):
@@ -67,8 +80,8 @@ class RobotEnvironment:
         self.takeoff_sequence()
 
         # 4th: takes an observation of the initial condition of the robot
-        pitch_data = self.take_observation()
-        observation = [pitch_data,]
+        pitch_data, clock_data = self.take_observation()
+        observation = [pitch_data, clock_data,]
         
         # 5th: pauses simulation
         self.gazebo.pause_sim()
@@ -108,10 +121,10 @@ class RobotEnvironment:
         self.gazebo.unpause_sim()
         self.cmd_vel_pub.publish(cmd_vel)
         time.sleep(running_step)
-        pitch_data = self.take_observation()
+        pitch_data, clock_data = self.take_observation()
         self.gazebo.pause_sim()
 
-        observation = [pitch_data,]
+        observation = [pitch_data, clock_data]
 
         # finally we get an evaluation based on what happened in the sim
         reward, done = self.process_data(observation)
@@ -119,22 +132,29 @@ class RobotEnvironment:
         state = observation
         return state, reward, done, {}
 
+    def get_action(self, state):
+        actions = [1, 0, -1]
+        return random.choice(actions)
+
     def run(self):
-        self.reset()
-        is_running = True
         episode = 1
 
-        action = 0
+        # run reinforcement learning for every episode
+        state = self.reset()
+        is_running = True        
         rospy.loginfo("Episode %d is starting", episode)
         while is_running:
-            state, reward, done, _, = self.step(action) 
-            rospy.loginfo("Current pitch is %f", state[0])
+            action = self.get_action(state)
+            rospy.loginfo("Action is %d", action)
+            next_state, reward, done, _, = self.step(action) 
+            rospy.loginfo("Current pitch is %f at time %f", next_state[0], next_state[1])
             rospy.loginfo("Reward for action is %d", reward)
 
             if done:
                 is_running = False
 
         rospy.loginfo("Episode %d is completed", episode)
+        episode += 1
 
 if __name__ == "__main__":
     '''Initializes and cleanup ros node'''
