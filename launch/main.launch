@@ -10,5 +10,5 @@
     
     <arg name = "robot_name" value = "self_balancing_robot"/>
   </include>
-	<node pkg= "self_balancing_robot" type = "rl_environment.py" name = "rl_environment" output= "screen" />
+	<node pkg= "self_balancing_robot" type = "robot_node.py" name = "robot_node" output= "screen" />
 </launch>

@@ -9,34 +9,30 @@ import tf
 
 imu_topic = "/imu"
 
-class RLEnvironment:
+class RobotNode:
     def __init__(self):
-        self.imu_subscriber = rospy.Subscriber(imu_topic,Imu,self.callback)
+        self.imu_subscriber = rospy.Subscriber(imu_topic,Imu,self.imuCallback)
+        self.curr_pitch_pub = rospy.Publisher('/curr_pitch', Float32, queue_size=5)
 
-    def callback(self,data):
+    def imuCallback(self, data):
         quaternion = (data.orientation.x, data.orientation.y, data.orientation.z, data.orientation.w)
         euler = tf.transformations.euler_from_quaternion(quaternion)
         roll, pitch, yaw = euler
-
-        pause_physics_client=rospy.ServiceProxy('/gazebo/pause_physics',Empty)
-        pause_physics_client(EmptyRequest())
         
         rospy.loginfo("roll: %.4f pitch: %.4f yaw: %.4f", roll, pitch, yaw)
-        
+        self.curr_pitch_pub.publish(pitch)  
         if pitch > 0.4:
-            reset_physics_client=rospy.ServiceProxy('/gazebo/reset_simulation',Empty)
-            reset_physics_client(EmptyRequest())
-        
-        start_physics_client=rospy.ServiceProxy('/gazebo/unpause_physics',Empty)
-        start_physics_client(EmptyRequest())
+            rospy.loginfo( "Pitch is greater than 0.4. Sequence is completed.")
 
 def main(args):
     '''Initializes and cleanup ros node'''
-    rospy.init_node('RLEnvironment', anonymous=True)
-    env = RLEnvironment()
+    rospy.init_node('robot_node', anonymous=True)
+    env = RobotNode()
     
+    rate = rospy.Rate(10)
     try:
         rospy.spin()
+        rate.sleep()
     except KeyboardInterrupt:
         print "Shutting down ROS "
     
