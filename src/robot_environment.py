@@ -6,6 +6,8 @@ from std_msgs.msg import Float32
 from rosgraph_msgs.msg import Clock
 from gazebo_connection import GazeboConnection
 
+EPISODES = 5
+
 class RobotEnvironment:
 
     def __init__(self):
@@ -137,24 +139,27 @@ class RobotEnvironment:
         return random.choice(actions)
 
     def run(self):
-        episode = 1
+        for episode in range(1, EPISODES+1):
+            # run reinforcement learning for every episode
+            state = self.reset()
 
-        # run reinforcement learning for every episode
-        state = self.reset()
-        is_running = True        
-        rospy.loginfo("Episode %d is starting", episode)
-        while is_running:
-            action = self.get_action(state)
-            rospy.loginfo("Action is %d", action)
-            next_state, reward, done, _, = self.step(action) 
-            rospy.loginfo("Current pitch is %f at time %f", next_state[0], next_state[1])
-            rospy.loginfo("Reward for action is %d", reward)
+            total_reward = 0
+            is_running = True        
+            rospy.loginfo("Episode %d: starting", episode)
 
-            if done:
-                is_running = False
+            while is_running:
+                action = self.get_action(state)
+                next_state, reward, done, _, = self.step(action) 
 
-        rospy.loginfo("Episode %d is completed", episode)
-        episode += 1
+                rospy.loginfo("Episode %d: action: %d pitch: %f time: %f", episode, action, next_state[0], next_state[1])
+                total_reward += 1
+
+                if done:
+                    is_running = False
+                    rospy.loginfo("Episode %d: reward: %d", episode, total_reward)
+
+            rospy.loginfo("Episode %d: completed", episode)
+            episode += 1
 
 if __name__ == "__main__":
     '''Initializes and cleanup ros node'''
