@@ -34,7 +34,8 @@ def main(args):
         rospy.spin()
         rate.sleep()
     except KeyboardInterrupt:
-        print "Shutting down ROS "    
+        print("Shutting down ROS ")    
+        sys.exit()
 
 if __name__ == '__main__':
     main(sys.argv)

@@ -204,7 +204,7 @@ class RobotEnvironment:
                 # Shifting past state elements to the left by one
                 expanded_next_state = np.roll(expanded_next_state, -1)
 
-                if done:
+                if done or score >= 500:
                     # every episode update the target model to be same with model
                     agent.update_target_model()
 
@@ -233,7 +233,7 @@ class RobotEnvironment:
                     break
 
             # save the model
-            if episode % 50 == 0:
+            if episode % 20 == 0:
                 agent.model.save_weights("./cartpole_drqn.h5")
 
 
@@ -247,5 +247,6 @@ if __name__ == "__main__":
         env.run()
     except KeyboardInterrupt:
         print("Shutting down ROS ")
+        sys.exit()
     
 
