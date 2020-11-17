@@ -5,7 +5,7 @@ from geometry_msgs.msg import Twist
 from std_msgs.msg import Float32
 from rosgraph_msgs.msg import Clock
 from gazebo_connection import GazeboConnection
-
+import sys
 import random
 from collections import deque
 import numpy as np
@@ -224,6 +224,7 @@ class RobotEnvironment:
                         "  epsilon:",
                         agent.epsilon,
                     )
+                    break
 
                 # if the mean of scores of last 10 episode is bigger than 490
                 # stop training
