@@ -21,7 +21,7 @@ class RobotNode:
         
         rospy.loginfo("roll: %.4f pitch: %.4f yaw: %.4f", roll, pitch, yaw)
         self.curr_pitch_pub.publish(pitch)  
-        if pitch > 0.4:
+        if abs(pitch) > 0.4:
             rospy.loginfo( "Pitch is greater than 0.4. Sequence is completed.")
 
 def main(args):
