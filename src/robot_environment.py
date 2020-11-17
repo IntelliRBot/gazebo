@@ -6,14 +6,20 @@ from std_msgs.msg import Float32
 from rosgraph_msgs.msg import Clock
 from gazebo_connection import GazeboConnection
 
-EPISODES = 5
+import random
+from collections import deque
+import numpy as np
+import pylab
+from drqn import DRQNAgent
+
+EPISODES = 300
 
 class RobotEnvironment:
 
     def __init__(self):
         # before initialising the environment
-        self.cmd_vel_pub = rospy.Publisher('/cmd_vel', Twist, queue_size=5)
-        
+        self.cmd_vel_pub = rospy.Publisher('/cmd_vel', Twist, queue_size=1)
+
         # stablishes connection with simulator
         self.gazebo = GazeboConnection()
 
@@ -22,7 +28,7 @@ class RobotEnvironment:
 
     def check_topic_publishers_connection(self):
         
-        rate = rospy.Rate(10) # 10hz
+        rate = rospy.Rate(1) # 10hz
         while(self.cmd_vel_pub.get_num_connections() == 0):
             rospy.loginfo("No subscribers to cmd_vel yet so we wait and try again")
             rate.sleep()
@@ -83,7 +89,7 @@ class RobotEnvironment:
 
         # 4th: takes an observation of the initial condition of the robot
         pitch_data, clock_data = self.take_observation()
-        observation = [pitch_data, clock_data,]
+        observation = [pitch_data,]
         
         # 5th: pauses simulation
         self.gazebo.pause_sim()
@@ -108,11 +114,10 @@ class RobotEnvironment:
         # we perform the corresponding movement of the robot
         actions = {
             1: 0.1,
-            0: 0,
-            -1: -0.1,
+            0: -0.1,
         }
         if not action in actions:
-            raise Exception("Choose actions -1, 0, or 1")
+            raise Exception("Choose actions 0, or 1")
         
         # 1st, we decide which velocity command corresponds
         cmd_vel = Twist()
@@ -126,7 +131,7 @@ class RobotEnvironment:
         pitch_data, clock_data = self.take_observation()
         self.gazebo.pause_sim()
 
-        observation = [pitch_data, clock_data]
+        observation = [pitch_data,]
 
         # finally we get an evaluation based on what happened in the sim
         reward, done = self.process_data(observation)
@@ -134,40 +139,113 @@ class RobotEnvironment:
         state = observation
         return state, reward, done, {}
 
-    def get_action(self, state):
-        actions = [1, 0, -1]
-        return random.choice(actions)
-
     def run(self):
+        # Number of past state to use
+        number_of_past_state = 4
+
+        # get size of state and action from environment
+        state_size = 1
+        expanded_state_size = state_size * number_of_past_state
+        action_size = 2
+
+        agent = DRQNAgent(expanded_state_size, action_size)
+
+        scores, episodes = [], []
+
         for episode in range(1, EPISODES+1):
+            done = False
+            score = 0
             # run reinforcement learning for every episode
             state = self.reset()
 
-            total_reward = 0
-            is_running = True        
+            # expand the state with past states and initialize
+            expanded_state = np.zeros(expanded_state_size)
+            expanded_next_state = np.zeros(expanded_state_size)
+            for h in range(state_size):
+                expanded_state[(h + 1) * number_of_past_state - 1] = state[h]
+
+            # reshape states for LSTM input without embedding layer
+            reshaped_state = np.zeros((1, expanded_state_size, 2))
+            for i in range(expanded_state_size):
+                for j in range(2):
+                    reshaped_state[0, i, j] = expanded_state[i]
+
             rospy.loginfo("Episode %d: starting", episode)
 
-            while is_running:
-                action = self.get_action(state)
-                next_state, reward, done, _, = self.step(action) 
+            while not done:
+                action = agent.get_action(reshaped_state)
+                next_state, reward, done, info, = self.step(action) 
 
-                rospy.loginfo("Episode %d: action: %d pitch: %f time: %f", episode, action, next_state[0], next_state[1])
-                total_reward += 1
+                rospy.loginfo("Episode %d: action: %d pitch: %f", episode, action, next_state[0])
+
+                # update the expanded next state with next state values
+                for h in range(state_size):
+                    expanded_next_state[(h + 1) * number_of_past_state - 1] = next_state[h]
+
+                # reshape expanded next state for LSTM input without embedding layer
+                reshaped_next_state = np.zeros((1, expanded_state_size, 2))
+                for i in range(expanded_state_size):
+                    for j in range(2):
+                        reshaped_next_state[0, i, j] = expanded_next_state[i]
+
+                # if an action make the episode end, then gives penalty of -100
+                reward = reward if not done or score == 499 else -100
+
+                # save the sample <s, a, r, s'> to the replay memory
+                agent.append_sample(
+                    reshaped_state, action, reward, reshaped_next_state, done
+                )
+
+                # every time step do the training
+                agent.train_model()
+                score += reward
+                reshaped_state = reshaped_next_state
+
+                # Shifting past state elements to the left by one
+                expanded_next_state = np.roll(expanded_next_state, -1)
 
                 if done:
-                    is_running = False
-                    rospy.loginfo("Episode %d: reward: %d", episode, total_reward)
+                    # every episode update the target model to be same with model
+                    agent.update_target_model()
+
+                    # every episode, plot the play time
+                    score = score if score == 500 else score + 100
+                    scores.append(score)
+                    episodes.append(episode)
+                    pylab.plot(episodes, scores, "b")
+                    pylab.savefig("./cartpole_drqn.png")
+                    print(
+                        "episode:",
+                        episode,
+                        "  score:",
+                        score,
+                        "  memory length:",
+                        len(agent.memory),
+                        "  epsilon:",
+                        agent.epsilon,
+                    )
+
+                # if the mean of scores of last 10 episode is bigger than 490
+                # stop training
+                # revised to exit cleanly on Jupiter notebook
+                if np.mean(scores[-min(10, len(scores)) :]) > 490:
+                    sys.exit()
+                    break
+
+            # save the model
+            if episode % 50 == 0:
+                agent.model.save_weights("./cartpole_drqn.h5")
+
 
             rospy.loginfo("Episode %d: completed", episode)
-            episode += 1
 
 if __name__ == "__main__":
     '''Initializes and cleanup ros node'''
     rospy.init_node('robot_environment_node', anonymous=True)
+    env = RobotEnvironment()
     try:
-        env = RobotEnvironment()
         env.run()
     except KeyboardInterrupt:
-        print "Shutting down ROS "
+        print("Shutting down ROS ")
     
 

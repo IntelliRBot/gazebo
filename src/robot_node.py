@@ -11,8 +11,8 @@ imu_topic = "/imu"
 
 class RobotNode:
     def __init__(self):
-        self.imu_subscriber = rospy.Subscriber(imu_topic,Imu,self.imuCallback)
-        self.curr_pitch_pub = rospy.Publisher('/curr_pitch', Float32, queue_size=5)
+        self.imu_subscriber = rospy.Subscriber(imu_topic,Imu,self.imuCallback, queue_size=1)
+        self.curr_pitch_pub = rospy.Publisher('/curr_pitch', Float32, queue_size=1)
 
     def imuCallback(self, data):
         quaternion = (data.orientation.x, data.orientation.y, data.orientation.z, data.orientation.w)
@@ -29,13 +29,12 @@ def main(args):
     rospy.init_node('robot_node', anonymous=True)
     env = RobotNode()
     
-    rate = rospy.Rate(10)
+    rate = rospy.Rate(1)
     try:
         rospy.spin()
         rate.sleep()
     except KeyboardInterrupt:
-        print "Shutting down ROS "
-    
+        print "Shutting down ROS "    
 
 if __name__ == '__main__':
     main(sys.argv)

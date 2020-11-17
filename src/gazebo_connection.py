@@ -6,6 +6,7 @@ from gazebo_msgs.srv import SetPhysicsProperties
 from std_msgs.msg import Float64
 import geometry_msgs
 import gazebo_msgs
+
 class GazeboConnection():
     
     def __init__(self):
