@@ -11,8 +11,8 @@ imu_topic = "/imu"
 
 class RobotNode:
     def __init__(self):
-        self.imu_subscriber = rospy.Subscriber(imu_topic,Imu,self.imuCallback)
-        self.curr_pitch_pub = rospy.Publisher('/curr_pitch', Float32, queue_size=5)
+        self.imu_subscriber = rospy.Subscriber(imu_topic,Imu,self.imuCallback, queue_size=1)
+        self.curr_pitch_pub = rospy.Publisher('/curr_pitch', Float32, queue_size=1)
 
     def imuCallback(self, data):
         quaternion = (data.orientation.x, data.orientation.y, data.orientation.z, data.orientation.w)
@@ -21,7 +21,7 @@ class RobotNode:
         
         rospy.loginfo("roll: %.4f pitch: %.4f yaw: %.4f", roll, pitch, yaw)
         self.curr_pitch_pub.publish(pitch)  
-        if pitch > 0.4:
+        if abs(pitch) > 0.4:
             rospy.loginfo( "Pitch is greater than 0.4. Sequence is completed.")
 
 def main(args):
@@ -29,13 +29,13 @@ def main(args):
     rospy.init_node('robot_node', anonymous=True)
     env = RobotNode()
     
-    rate = rospy.Rate(10)
+    rate = rospy.Rate(1)
     try:
         rospy.spin()
         rate.sleep()
     except KeyboardInterrupt:
-        print "Shutting down ROS "
-    
+        print("Shutting down ROS ")    
+        sys.exit()
 
 if __name__ == '__main__':
     main(sys.argv)
