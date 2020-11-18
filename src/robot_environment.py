@@ -141,7 +141,7 @@ class RobotEnvironment:
 
         return state, reward, done
 
-    def step(self, action, running_step=0.5):
+    def step(self, action, running_step=3):
         # Given the action selected by the learning algorithm,
         # we perform the corresponding movement of the robot
         actions = {
@@ -587,7 +587,7 @@ if __name__ == "__main__":
     rospy.init_node('robot_environment_node', anonymous=True)
     env = RobotEnvironment()
     try:
-        env.predict_ddqn_quant()
+        env.train_ddqn()
     except KeyboardInterrupt:
         print("Shutting down ROS ")
         sys.exit()

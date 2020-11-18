@@ -21,7 +21,7 @@ class GazeboConnection():
         self.pause_sim()
 
     def set_gravity(self):
-        time_step = Float64(0.002)
+        time_step = Float64(0.001)
         max_update_rate = Float64(1000.0)
         gravity = geometry_msgs.msg.Vector3()
         gravity.x = 0.0
