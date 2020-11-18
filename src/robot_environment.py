@@ -389,6 +389,7 @@ class RobotEnvironment:
                         " epsilon:",
                         agent.epsilon,
                     )
+                    break
 
                     # if the mean of scores of last 10 episode is bigger than 490
                     # stop training
@@ -474,7 +475,7 @@ class RobotEnvironment:
                     scores.append(score)
                     episodes.append(episode)
                     pylab.plot(episodes, scores, "b")
-                    pylab.savefig("./cartpole_ddqn.png")
+                    pylab.savefig("./cartpole_dqn.png")
                     print(
                         "episode:",
                         episode,
@@ -485,6 +486,7 @@ class RobotEnvironment:
                         " epsilon:",
                         agent.epsilon,
                     )
+                    break
 
                     # if the mean of scores of last 10 episode is bigger than 490
                     # stop training
@@ -493,7 +495,7 @@ class RobotEnvironment:
 
             # save the model
             if episode % 20 == 0:
-                agent.model.save_weights("./cartpole_ddqn.h5")
+                agent.model.save_weights("./cartpole_dqn.h5")
 
             rospy.loginfo("Episode %d: completed", episode)
 

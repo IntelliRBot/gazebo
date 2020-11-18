@@ -39,7 +39,7 @@ class DQNAgent:
         self.update_target_model()
 
         if self.load_model:
-            self.model.load_weights("./save_model/cartpole_dqn.h5")
+            self.model.load_weights("./cartpole_dqn.h5")
 
     # approximate Q function using Neural Network
     # state is input and Q Value of each action is output of network
