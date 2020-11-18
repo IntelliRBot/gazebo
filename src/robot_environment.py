@@ -12,7 +12,7 @@ from collections import deque
 import numpy as np
 import pylab
 from drqn import DRQNAgent
-
+from ddqn import DoubleDQNAgent
 EPISODES = 300
 
 class RobotEnvironment:
@@ -138,7 +138,7 @@ class RobotEnvironment:
 
         return state, reward, done
 
-    def step(self, action, running_step=0.3):
+    def step(self, action, running_step=1):
         # Given the action selected by the learning algorithm,
         # we perform the corresponding movement of the robot
         actions = {
@@ -394,7 +394,7 @@ class RobotEnvironment:
                         break
 
             # save the model
-            if e % 20 == 0:
+            if episode % 20 == 0:
                 agent.model.save_weights("./cartpole_ddqn.h5")
 
             rospy.loginfo("Episode %d: completed", episode)
@@ -406,26 +406,25 @@ class RobotEnvironment:
 
         agent = DoubleDQNAgent(state_size, action_size)
 
+        done = False
+        score = 0
 
-            done = False
-            score = 0
+        self.reset()
+        state, _, _, _ = self.step(-1)
+        state = np.reshape(state, [1, state_size])
 
-            self.reset()
-            state, _, _, _ = self.step(-1)
-            state = np.reshape(state, [1, state_size])
+        while not done:
+            # get action for the current state and go one step in environment
+            action = agent.get_action(state)
+            next_state, reward, done, info = self.step(action)
+            next_state = np.reshape(next_state, [1, state_size])
 
-            while not done:
-                # get action for the current state and go one step in environment
-                action = agent.get_action(state)
-                next_state, reward, done, info = self.step(action)
-                next_state = np.reshape(next_state, [1, state_size])
+            score += reward
+            state = next_state
 
-                score += reward
-                state = next_state
-
-                if done or score >= 500:
-                    print("score:",score)
-                    break
+            if done or score >= 500:
+                print("score:",score)
+                break
 
 
 if __name__ == "__main__":
@@ -433,7 +432,7 @@ if __name__ == "__main__":
     rospy.init_node('robot_environment_node', anonymous=True)
     env = RobotEnvironment()
     try:
-        env.train_drqn()
+        env.train_ddqn()
     except KeyboardInterrupt:
         print("Shutting down ROS ")
         sys.exit()
