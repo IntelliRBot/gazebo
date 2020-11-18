@@ -407,7 +407,7 @@ class RobotEnvironment:
         state_size = 4
         action_size = 2
 
-        agent = DoubleDQNAgent(state_size, action_size)
+        agent = DoubleDQNAgent(state_size, action_size, load_model=True)
 
         done = False
         score = 0
@@ -504,7 +504,7 @@ class RobotEnvironment:
         state_size = 4
         action_size = 2
 
-        agent = DQNAgent(state_size, action_size)
+        agent = DQNAgent(state_size, action_size, load_model=True)
 
         done = False
         score = 0
@@ -531,7 +531,7 @@ if __name__ == "__main__":
     rospy.init_node('robot_environment_node', anonymous=True)
     env = RobotEnvironment()
     try:
-        env.train_dqn()
+        env.predict_dqn()
     except KeyboardInterrupt:
         print("Shutting down ROS ")
         sys.exit()
