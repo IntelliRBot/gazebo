@@ -14,6 +14,7 @@ import pylab
 from drqn import DRQNAgent
 from ddqn import DoubleDQNAgent
 from dqn import DQNAgent
+from quantized_models import DQNAgent_quant
 
 EPISODES = 300
 
@@ -526,12 +527,39 @@ class RobotEnvironment:
                 print("score:",score)
                 break
 
+    def predict_dqn_quant(self):
+        # get size of state and action from environment
+        state_size = 4
+        action_size = 2
+
+        agent = DQNAgent_quant()
+
+        done = False
+        score = 0
+
+        self.reset()
+        state, _, _, _ = self.step(-1)
+        state = np.reshape(state, [1, state_size])
+
+        while not done:
+            # get action for the current state and go one step in environment
+            action = agent.get_action(state)
+            next_state, reward, done, info = self.step(action)
+            next_state = np.reshape(next_state, [1, state_size])
+
+            score += reward
+            state = next_state
+
+            if done or score >= 500:
+                print("score:",score)
+                break
+
 if __name__ == "__main__":
     '''Initializes and cleanup ros node'''
     rospy.init_node('robot_environment_node', anonymous=True)
     env = RobotEnvironment()
     try:
-        env.predict_dqn()
+        env.predict_dqn_quant()
     except KeyboardInterrupt:
         print("Shutting down ROS ")
         sys.exit()
